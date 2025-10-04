@@ -7,9 +7,12 @@ import {
   PlayerType,
   GameStatus,
   ProjectileInstance,
-  VisualEffectInstance
+  VisualEffectInstance,
+  Difficulty,
+  FloatingTextInstance,
+  GameSpeed
 } from './types';
-import { AGES, UNITS, SPELLS, UPGRADES, TICK_RATE, BATTLEFIELD_WIDTH, INITIAL_PLAYER_STATE } from './constants';
+import { AGES, UNITS, SPELLS, UPGRADES, TICK_RATE, BATTLEFIELD_WIDTH, INITIAL_PLAYER_STATE, FORMATION_CONFIG, DIFFICULTY_SETTINGS } from './constants';
 import Battlefield from './components/Battlefield';
 import ControlPanel from './components/ControlPanel';
 import StatusBar from './components/StatusBar';
@@ -17,6 +20,7 @@ import GameModal from './components/GameModal';
 import { CpuChipIcon, SparklesIcon } from './components/Icons';
 import Background from './components/Background';
 import ConfirmationModal from './components/ConfirmationModal';
+import GameSpeedControl from './components/GameSpeedControl';
 
 const useGameLoop = (callback: () => void, interval: number) => {
   const callbackRef = useRef(callback);
@@ -53,44 +57,100 @@ const getInitialState = () => ({
   units: [] as UnitInstance[],
   projectiles: [] as ProjectileInstance[],
   effects: [] as VisualEffectInstance[],
+  floatingTexts: [] as FloatingTextInstance[],
   spellCooldowns: {} as { [spellId: string]: number },
   gameStatus: GameStatus.MENU,
   gameTime: 0,
 });
 
-const GameModeSelection: React.FC<{ onSelectMode: (mode: GameMode) => void }> = ({ onSelectMode }) => {
+const StartMenu: React.FC<{ onStartGame: (mode: GameMode, difficulty: Difficulty) => void }> = ({ onStartGame }) => {
+    const [selectedMode, setSelectedMode] = useState<GameMode>('ai');
+    const [selectedDifficulty, setSelectedDifficulty] = useState<Difficulty>('normal');
+
+    const modeButtonStyle = (mode: GameMode) => {
+        const isSelected = selectedMode === mode;
+        const base = "group relative w-72 p-6 bg-gray-800 border-2 rounded-lg shadow-lg transition-all transform hover:scale-105";
+        const selected = "bg-gray-700/80 scale-105 ring-4 ring-offset-2 ring-offset-black";
+        const colors = mode === 'ai' 
+            ? `border-purple-500/50 hover:border-purple-400 ${isSelected ? 'border-purple-400 ring-purple-400' : ''}`
+            : `border-sky-500/50 hover:border-sky-400 ${isSelected ? 'border-sky-400 ring-sky-400' : ''}`;
+        return `${base} ${colors} ${isSelected ? selected : ''}`;
+    };
+    
+    const difficultyButtonStyle = (difficulty: Difficulty) => {
+        const isSelected = selectedDifficulty === difficulty;
+        const base = "px-8 py-3 rounded-lg text-white font-bold text-lg transition-all duration-200 transform hover:scale-105 shadow-lg";
+        const selected = "ring-4 ring-offset-2 ring-offset-black";
+        const colors = {
+            easy: `bg-green-600 hover:bg-green-500 ${isSelected ? 'ring-green-400' : ''}`,
+            normal: `bg-yellow-600 hover:bg-yellow-500 ${isSelected ? 'ring-yellow-400' : ''}`,
+            hard: `bg-red-600 hover:bg-red-500 ${isSelected ? 'ring-red-400' : ''}`,
+            super_hard: `bg-red-900 hover:bg-red-900 ${isSelected ? 'ring-red-900' : ''}`
+        };
+        return `${base} ${colors[difficulty]} ${isSelected ? selected : ''}`;
+    };
+
     return (
         <div className="flex flex-col h-screen w-screen bg-black text-white font-sans items-center justify-center">
             <Background />
-            <div className="z-10 text-center">
-                <h1 className="text-6xl font-extrabold text-cyan-200 tracking-widest mb-4">TIÊN HIỆP CHIẾN KỶ</h1>
-                <h2 className="text-2xl text-gray-300 mb-12">Chọn Chế Độ Chơi</h2>
-                <div className="flex gap-8">
-                    <button 
-                        onClick={() => onSelectMode('ai')}
-                        className="group relative w-64 p-6 bg-gray-800 border-2 border-purple-500/50 rounded-lg shadow-lg hover:bg-gray-700/80 hover:border-purple-400 transition-all transform hover:scale-105"
-                    >
-                        <div className="flex items-center justify-center gap-3">
-                            <SparklesIcon className="w-8 h-8 text-purple-400"/>
-                            <span className="text-2xl font-bold">Đấu Với AI (Gemini)</span>
-                        </div>
-                        <p className="mt-3 text-sm text-gray-400">
-                            Thách đấu AI linh hoạt với chiến thuật thích ứng theo thời gian thực.
-                        </p>
-                    </button>
-                    <button 
-                        onClick={() => onSelectMode('scripted')}
-                        className="group relative w-64 p-6 bg-gray-800 border-2 border-sky-500/50 rounded-lg shadow-lg hover:bg-gray-700/80 hover:border-sky-400 transition-all transform hover:scale-105"
-                    >
-                         <div className="flex items-center justify-center gap-3">
-                            <CpuChipIcon className="w-8 h-8 text-sky-400"/>
-                            <span className="text-2xl font-bold">Đấu Với Máy (Logic)</span>
-                        </div>
-                        <p className="mt-3 text-sm text-gray-400">
-                           Đối mặt với máy có logic đơn giản, dễ đoán. Hoàn hảo để luyện tập.
-                        </p>
-                    </button>
+            <div className="z-10 text-center flex flex-col items-center gap-12">
+                <div>
+                    <h1 className="text-6xl font-extrabold text-cyan-200 tracking-widest mb-4">TIÊN HIỆP CHIẾN KỶ</h1>
+                    <h2 className="text-2xl text-gray-300">Chào Mừng Tu Tiên Giả</h2>
                 </div>
+
+                <div className="flex flex-col gap-10 items-center">
+                    {/* Mode Selection */}
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-200 mb-4">Chọn Chế Độ Chơi</h3>
+                        <div className="flex gap-8">
+                            <button 
+                                onClick={() => setSelectedMode('ai')}
+                                className={modeButtonStyle('ai')}
+                            >
+                                <div className="flex items-center justify-center gap-3">
+                                    <SparklesIcon className="w-8 h-8 text-purple-400"/>
+                                    <span className="text-2xl font-bold">Đấu Với AI (Gemini)</span>
+                                </div>
+                                <p className="mt-3 text-sm text-gray-400">
+                                    Thách đấu AI linh hoạt với chiến thuật thích ứng theo thời gian thực.
+                                </p>
+                            </button>
+                            <button 
+                                onClick={() => setSelectedMode('scripted')}
+                                className={modeButtonStyle('scripted')}
+                            >
+                                 <div className="flex items-center justify-center gap-3">
+                                    <CpuChipIcon className="w-8 h-8 text-sky-400"/>
+                                    <span className="text-2xl font-bold">Đấu Với Máy (Logic)</span>
+                                </div>
+                                <p className="mt-3 text-sm text-gray-400">
+                                   Đối mặt với máy có logic đơn giản, dễ đoán. Hoàn hảo để luyện tập.
+                                </p>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Difficulty Selection */}
+                    <div>
+                        <h3 className="text-xl font-bold text-gray-200 mb-4">Chọn Độ Khó</h3>
+                        <div className="flex gap-4">
+                            {(Object.keys(DIFFICULTY_SETTINGS) as Difficulty[]).map(key => (
+                                <button key={key} onClick={() => setSelectedDifficulty(key)} className={difficultyButtonStyle(key)}>
+                                    {DIFFICULTY_SETTINGS[key].label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Start Button */}
+                <button
+                    onClick={() => onStartGame(selectedMode, selectedDifficulty)}
+                    className="mt-4 px-12 py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-2xl font-bold rounded-xl shadow-lg hover:shadow-cyan-500/50 transition-all transform hover:scale-110"
+                >
+                    Bắt Đầu
+                </button>
             </div>
         </div>
     );
@@ -103,11 +163,14 @@ const App: React.FC = () => {
     const [units, setUnits] = useState<UnitInstance[]>(getInitialState().units);
     const [projectiles, setProjectiles] = useState<ProjectileInstance[]>(getInitialState().projectiles);
     const [effects, setEffects] = useState<VisualEffectInstance[]>(getInitialState().effects);
+    const [floatingTexts, setFloatingTexts] = useState<FloatingTextInstance[]>(getInitialState().floatingTexts);
     const [spellCooldowns, setSpellCooldowns] = useState<{ [spellId: string]: number }>(getInitialState().spellCooldowns);
     const [gameStatus, setGameStatus] = useState<GameStatus>(getInitialState().gameStatus);
     const [gameTime, setGameTime] = useState<number>(getInitialState().gameTime);
     const [targetingSpell, setTargetingSpell] = useState<string | null>(null);
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
+    const [difficulty, setDifficulty] = useState<Difficulty>('normal');
+    const [gameSpeed, setGameSpeed] = useState<GameSpeed>(1);
     const [confirmation, setConfirmation] = useState<{ type: 'evolve' | 'upgrade', id?: string } | null>(null);
     
     const lastDecisionTime = useRef(0);
@@ -147,6 +210,7 @@ const App: React.FC = () => {
                         id: `${PlayerType.ENEMY}_${unitData.id}_${Date.now()}`, unitId: unitData.id, owner: PlayerType.ENEMY,
                         hp: unitData.hp, maxHp: unitData.hp, position: 100,
                         attackCooldown: 1 / unitData.attackSpeed, status: 'moving',
+                        yOffset: 0,
                     };
                     unitsToAddRef.current.push(newUnit);
                 }
@@ -181,6 +245,7 @@ const App: React.FC = () => {
                     position: 100,
                     attackCooldown: 1 / unitData.attackSpeed,
                     status: 'moving',
+                    yOffset: 0,
                 };
                 unitsToAddRef.current.push(newUnit);
                 return; 
@@ -201,14 +266,18 @@ const App: React.FC = () => {
     }, [units]);
 
     const gameTick = useCallback(() => {
-        if (gameStatus !== GameStatus.PLAYING) return;
-        const delta = TICK_RATE / 1000;
+        if (gameStatus !== GameStatus.PLAYING || !gameMode) return;
+        const delta = (TICK_RATE / 1000) * gameSpeed;
         setGameTime(t => t + delta);
 
         setPlayer(p => ({...p, mana: Math.min(p.maxMana, p.mana + p.manaRegen * delta)}));
         setEnemy(e => ({...e, mana: Math.min(e.maxMana, e.mana + e.manaRegen * delta)}));
 
-        if (gameTime - lastDecisionTime.current > (gameMode === 'ai' ? 10 : 3)) {
+        const decisionInterval = gameMode === 'ai' 
+            ? DIFFICULTY_SETTINGS[difficulty].aiDecisionInterval
+            : DIFFICULTY_SETTINGS[difficulty].scriptedDecisionInterval;
+
+        if (gameTime - lastDecisionTime.current > decisionInterval) {
             if (gameMode === 'ai') {
                 makeAIDecision();
             } else if (gameMode === 'scripted') {
@@ -222,7 +291,38 @@ const App: React.FC = () => {
 
         let newUnits = [...units, ...unitsFromRef];
         let newProjectiles: ProjectileInstance[] = [];
+        let newFloatingTexts: FloatingTextInstance[] = [];
         let playerDamage = 0, enemyDamage = 0, expGained = 0;
+
+        // --- START: FORMATION LOGIC ---
+        const getFormationSpeed = (owner: PlayerType) => {
+            const movingUnits = newUnits.filter(u => u.owner === owner && u.status === 'moving');
+            if (movingUnits.length === 0) return 0;
+            return Math.min(...movingUnits.map(u => UNITS[u.unitId].speed));
+        };
+        const playerFormationSpeed = getFormationSpeed(PlayerType.PLAYER);
+        const enemyFormationSpeed = getFormationSpeed(PlayerType.ENEMY);
+
+        [PlayerType.PLAYER, PlayerType.ENEMY].forEach(owner => {
+            const ownedUnits = newUnits.filter(u => u.owner === owner);
+            const unitsByRole: { [role: string]: UnitInstance[] } = {};
+            ownedUnits.forEach(u => {
+                const role = UNITS[u.unitId].role;
+                if (!unitsByRole[role]) unitsByRole[role] = [];
+                unitsByRole[role].push(u);
+            });
+            Object.keys(unitsByRole).forEach(role => {
+                const config = FORMATION_CONFIG[role as keyof typeof FORMATION_CONFIG];
+                const group = unitsByRole[role];
+                const count = group.length;
+                group.forEach((unit, index) => {
+                    const targetY = (index - (count - 1) / 2) * config.ySpread;
+                    unit.yOffset = (unit.yOffset || 0) * 0.95 + targetY * 0.05;
+                });
+            });
+        });
+        // --- END: FORMATION LOGIC ---
+
 
         newUnits.forEach(unit => {
             if (unit.status === 'dying') return;
@@ -253,6 +353,14 @@ const App: React.FC = () => {
                         });
                     } else {
                         closestOpponent.hp -= attack;
+                        newFloatingTexts.push({
+                            id: `ft-${unit.id}-${Date.now()}`,
+                            text: `-${Math.round(attack)}`,
+                            color: isPlayer ? 'text-yellow-300' : 'text-red-400',
+                            position: { x: closestOpponent.position, y: 90 + (closestOpponent.yOffset || 0) },
+                            createdAt: Date.now(),
+                            duration: 1500,
+                        });
                         if (isPlayer && closestOpponent.hp <= 0 && closestOpponent.status !== 'dying') {
                             expGained += Math.floor(UNITS[closestOpponent.unitId].cost / 4);
                         }
@@ -262,7 +370,10 @@ const App: React.FC = () => {
             } else {
                 unit.status = 'moving';
                 const direction = isPlayer ? 1 : -1;
-                unit.position += direction * unitData.speed * delta;
+                const formationSpeed = isPlayer ? playerFormationSpeed : enemyFormationSpeed;
+                const speed = formationSpeed > 0 ? formationSpeed : unitData.speed;
+                unit.position += direction * speed * delta;
+
                 const targetPosition = isPlayer ? BATTLEFIELD_WIDTH : 0;
                 if ((isPlayer && unit.position >= targetPosition) || (!isPlayer && unit.position <= targetPosition)) {
                     unit.position = targetPosition;
@@ -271,7 +382,14 @@ const App: React.FC = () => {
                     if(unit.attackCooldown <= 0){
                         unit.attackCooldown = 1 / unitData.attackSpeed;
                         unit.attackAnimationEnd = Date.now() + 300;
-                        if (isPlayer) enemyDamage += unitData.attack; else playerDamage += unitData.attack;
+                        const damage = unitData.attack;
+                        if (isPlayer) {
+                            enemyDamage += damage;
+                            newFloatingTexts.push({ id: `ft-base-${unit.id}-${Date.now()}`, text: `-${Math.round(damage)}`, color: 'text-red-400', position: { x: 5, y: 90 }, createdAt: Date.now(), duration: 1500 });
+                        } else {
+                            playerDamage += damage;
+                            newFloatingTexts.push({ id: `ft-base-${unit.id}-${Date.now()}`, text: `-${Math.round(damage)}`, color: 'text-red-400', position: { x: 95, y: 90 }, createdAt: Date.now(), duration: 1500 });
+                        }
                     }
                 }
             }
@@ -284,6 +402,14 @@ const App: React.FC = () => {
             const dist = Math.sqrt(dx*dx + dy*dy);
             if (dist < 1) {
                 target.hp -= p.damage;
+                newFloatingTexts.push({
+                    id: `ft-${p.id}-${Date.now()}`,
+                    text: `-${Math.round(p.damage)}`,
+                    color: p.owner === PlayerType.PLAYER ? 'text-yellow-300' : 'text-red-400',
+                    position: { x: target.position, y: 90 + (target.yOffset || 0) },
+                    createdAt: Date.now(),
+                    duration: 1500,
+                });
                 if (p.owner === PlayerType.PLAYER && target.hp <= 0 && target.status !== 'dying') {
                     expGained += Math.floor(UNITS[target.unitId].cost / 4);
                 }
@@ -298,6 +424,7 @@ const App: React.FC = () => {
         setUnits(newUnits);
         setProjectiles([...updatedProjectiles, ...newProjectiles]);
         setEffects(e => e.filter(eff => Date.now() - eff.createdAt < eff.duration));
+        setFloatingTexts(current => [...current.filter(ft => Date.now() - ft.createdAt < ft.duration), ...newFloatingTexts]);
 
         if (playerDamage > 0 || expGained > 0) {
             setPlayer(p => ({
@@ -312,7 +439,7 @@ const App: React.FC = () => {
         
         if (player.hp <= 0 && gameStatus === GameStatus.PLAYING) setGameStatus(GameStatus.LOST);
         if (enemy.hp <= 0 && gameStatus === GameStatus.PLAYING) setGameStatus(GameStatus.WON);
-    }, [gameStatus, player, enemy, units, projectiles, gameTime, makeAIDecision, makeScriptedDecision, gameMode]);
+    }, [gameStatus, player, enemy, units, projectiles, gameTime, makeAIDecision, makeScriptedDecision, gameMode, difficulty, gameSpeed]);
 
     useGameLoop(gameTick, TICK_RATE);
     
@@ -325,6 +452,7 @@ const App: React.FC = () => {
             id: `${PlayerType.PLAYER}_${unitId}_${Date.now()}`, unitId, owner: PlayerType.PLAYER,
             hp: unitData.hp * hpBonus, maxHp: unitData.hp * hpBonus, position: 0,
             attackCooldown: 1 / unitData.attackSpeed, status: 'moving',
+            yOffset: 0,
         };
         setUnits(u => [...u, newUnit]);
     };
@@ -339,7 +467,24 @@ const App: React.FC = () => {
             setPlayer(p => ({...p, mana: p.mana - spell.cost}));
             setSpellCooldowns(s => ({...s, [spellId]: spell.cooldown}));
             if (spellId === 'heal') {
-                setUnits(currentUnits => currentUnits.map(u => u.owner === PlayerType.PLAYER ? {...u, hp: Math.min(u.maxHp, u.hp + 50)}: u));
+                const healAmount = 50;
+                const textsToAdd: FloatingTextInstance[] = [];
+                setUnits(currentUnits => currentUnits.map(u => {
+                    if (u.owner === PlayerType.PLAYER) {
+                        const hpBefore = u.hp;
+                        const newHp = Math.min(u.maxHp, u.hp + healAmount);
+                        const actualHeal = newHp - hpBefore;
+                        if (actualHeal > 0) {
+                            textsToAdd.push({
+                                id: `ft-heal-${u.id}-${Date.now()}`, text: `+${Math.round(actualHeal)}`, color: 'text-green-400',
+                                position: { x: u.position, y: 90 + (u.yOffset || 0) }, createdAt: Date.now(), duration: 1500,
+                            });
+                        }
+                        return {...u, hp: newHp};
+                    }
+                    return u;
+                }));
+                setFloatingTexts(fts => [...fts, ...textsToAdd]);
                 setEffects(e => [...e, { id: `eff_${Date.now()}`, type: 'heal', position: { x: 20, y: 50 }, duration: 1000, createdAt: Date.now() }]);
             }
         }
@@ -360,7 +505,16 @@ const App: React.FC = () => {
         setSpellCooldowns(s => ({...s, [targetingSpell]: spell.cooldown}));
         
         if (targetingSpell === 'fireball') {
-            target.hp -= 100;
+            const damage = 100;
+            target.hp -= damage;
+            setFloatingTexts(fts => [...fts, {
+                id: `ft-spell-${target.id}-${Date.now()}`,
+                text: `-${damage}`,
+                color: 'text-orange-500',
+                position: { x: target.position, y: 90 + (target.yOffset || 0) },
+                createdAt: Date.now(),
+                duration: 1500,
+            }]);
             setEffects(e => [...e, { id: `eff_${Date.now()}`, type: 'explosion', position: { x: target.position, y: 10 }, duration: 500, createdAt: Date.now() }]);
         }
         
@@ -431,32 +585,55 @@ const App: React.FC = () => {
         const s = getInitialState();
         setPlayer(s.player); setEnemy(s.enemy); setUnits(s.units); setProjectiles(s.projectiles);
         setEffects(s.effects); setSpellCooldowns(s.spellCooldowns); setGameStatus(s.gameStatus);
-        setGameTime(s.gameTime); lastDecisionTime.current = 0;
+        setFloatingTexts(s.floatingTexts); setGameTime(s.gameTime); lastDecisionTime.current = 0;
         setTargetingSpell(null);
         setGameMode(null);
+        setGameSpeed(1);
     };
     
-    const handleSelectMode = (mode: GameMode) => {
+    const handleStartGame = (mode: GameMode, difficulty: Difficulty) => {
+        const settings = DIFFICULTY_SETTINGS[difficulty];
+        const s = getInitialState();
+
+        setPlayer(s.player);
+        setEnemy({
+            ...s.enemy,
+            hp: s.enemy.hp * settings.enemyHpMultiplier,
+            maxHp: s.enemy.maxHp * settings.enemyHpMultiplier,
+            manaRegen: s.enemy.manaRegen * settings.enemyManaRegenMultiplier,
+        });
+
+        setUnits(s.units);
+        setProjectiles(s.projectiles);
+        setEffects(s.effects);
+        setFloatingTexts(s.floatingTexts);
+        setSpellCooldowns(s.spellCooldowns);
+        setGameTime(s.gameTime);
+        lastDecisionTime.current = 0;
+        setTargetingSpell(null);
+        setGameSpeed(1);
+
         setGameMode(mode);
-        if (mode === 'scripted') {
-            setEnemy(e => ({ ...e, manaRegen: 5 })); // Buff scripted AI slightly
-        }
+        setDifficulty(difficulty);
         setGameStatus(GameStatus.PLAYING);
     };
 
+
     if (gameStatus === GameStatus.MENU) {
-        return <GameModeSelection onSelectMode={handleSelectMode} />;
+        return <StartMenu onStartGame={handleStartGame} />;
     }
     
     return (
         <div className="flex flex-col h-screen w-screen bg-black text-white font-sans">
             <StatusBar player={player} enemy={enemy} />
+            <GameSpeedControl currentGameSpeed={gameSpeed} onSpeedChange={setGameSpeed} />
             <Battlefield 
                 player={player} 
                 enemy={enemy} 
                 units={units} 
                 projectiles={projectiles} 
                 effects={effects}
+                floatingTexts={floatingTexts}
                 targetingSpell={targetingSpell}
                 onUnitTargeted={handleCastTargetedSpell}
             />

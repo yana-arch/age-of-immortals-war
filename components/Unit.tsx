@@ -14,6 +14,9 @@ const UnitComponent: React.FC<UnitProps> = ({ unit, isTargeting, onTarget }) => 
   const [animationClass, setAnimationClass] = useState('');
   const animationTimeoutRef = useRef<number | null>(null);
 
+  // Add state to hold a random animation delay for desynchronization.
+  const [bobbingDelay] = useState(() => `${Math.random() * 0.4}s`);
+
   useEffect(() => {
       if (unit.attackAnimationEnd) {
           if (animationTimeoutRef.current) {
@@ -35,7 +38,9 @@ const UnitComponent: React.FC<UnitProps> = ({ unit, isTargeting, onTarget }) => 
   const colorClass = isPlayer ? 'bg-blue-500/50 border-cyan-400' : 'bg-red-500/50 border-red-400';
   const positionStyle = {
     left: `${unit.position}%`,
+    bottom: `calc(1.25rem + ${unit.yOffset || 0}px)`,
     transform: `translateX(-50%) ${isPlayer ? '' : 'scaleX(-1)'}`,
+    zIndex: Math.floor(10 + (unit.yOffset || 0) / 10),
   };
 
   const statusClass = {
@@ -50,22 +55,31 @@ const UnitComponent: React.FC<UnitProps> = ({ unit, isTargeting, onTarget }) => 
   const clickableProps = isTargetable ? { onClick: onTarget } : {};
   const targetableClass = isTargetable ? 'cursor-crosshair ring-4 ring-yellow-300 ring-offset-2 ring-offset-black animate-pulse hover:!scale-125 z-20 shadow-lg shadow-yellow-300/50' : '';
 
+  const isMoving = unit.status === 'moving';
+  const bobbingAnimationClass = isMoving ? 'animate-bobbing' : '';
+  const bobbingAnimationStyle = isMoving ? { animationDelay: bobbingDelay } : {};
+
   return (
     <div 
       {...clickableProps}
-      className={`absolute bottom-5 w-12 h-16 flex flex-col items-center transition-all duration-200 ${statusClass} ${targetableClass}`}
+      className={`absolute w-12 h-16 transition-all duration-200 ${statusClass} ${targetableClass}`}
       style={positionStyle}
     >
-      <div className={`w-10 h-10 flex items-center justify-center rounded-md border-2 transition-transform duration-100 ${colorClass} ${unit.status === 'attacking' ? (isPlayer ? 'shadow-[0_0_15px_cyan]' : 'shadow-[0_0_15px_red]') : ''} ${animationClass}`}>
-        <unitData.icon className="w-6 h-6 text-white" />
+      <div 
+        className={`w-full h-full flex flex-col items-center ${bobbingAnimationClass}`}
+        style={bobbingAnimationStyle}
+      >
+        <div className={`w-10 h-10 flex items-center justify-center rounded-md border-2 transition-transform duration-100 ${colorClass} ${unit.status === 'attacking' ? (isPlayer ? 'shadow-[0_0_15px_cyan]' : 'shadow-[0_0_15px_red]') : ''} ${animationClass}`}>
+          <unitData.icon className="w-6 h-6 text-white" />
+        </div>
+        <div className="w-10 h-1 mt-1 bg-gray-700 rounded-full overflow-hidden">
+          <div 
+            className={isPlayer ? "bg-green-500 h-full" : "bg-yellow-500 h-full"} 
+            style={{ width: `${hpPercentage}%`, transition: 'width 0.2s' }}
+          ></div>
+        </div>
+         <span className="text-xs mt-1 font-bold text-shadow">{unitData.name.split(' ').pop()}</span>
       </div>
-      <div className="w-10 h-1 mt-1 bg-gray-700 rounded-full overflow-hidden">
-        <div 
-          className={isPlayer ? "bg-green-500 h-full" : "bg-yellow-500 h-full"} 
-          style={{ width: `${hpPercentage}%`, transition: 'width 0.2s' }}
-        ></div>
-      </div>
-       <span className="text-xs mt-1 font-bold text-shadow">{unitData.name.split(' ').pop()}</span>
     </div>
   );
 };

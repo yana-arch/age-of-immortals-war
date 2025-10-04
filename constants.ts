@@ -1,37 +1,84 @@
-import { UnitData, SpellData, UpgradeData, AgeData, PlayerState } from './types';
+import { UnitData, SpellData, UpgradeData, AgeData, PlayerState, Difficulty } from './types';
 import { SwordIcon, ShieldIcon, CrosshairIcon, ZapIcon, SunIcon, BoltIcon, HomeModernIcon, HeartIcon, SparklesIcon, GhostIcon, MoonIcon } from './components/Icons';
 
 export const TICK_RATE = 1000 / 60; // 60 FPS
 export const BATTLEFIELD_WIDTH = 100; // Use percentage
+
+export const FORMATION_CONFIG = {
+  tank:   { ySpread: 12 },
+  melee:  { ySpread: 14 },
+  ranged: { ySpread: 16 },
+  elite:  { ySpread: 20 },
+};
+
+export const DIFFICULTY_SETTINGS: {
+  [key in Difficulty]: {
+    label: string;
+    enemyHpMultiplier: number;
+    enemyManaRegenMultiplier: number;
+    aiDecisionInterval: number; // in seconds
+    scriptedDecisionInterval: number; // in seconds
+  }
+} = {
+  easy: {
+    label: 'Dễ',
+    enemyHpMultiplier: 0.8,
+    enemyManaRegenMultiplier: 1.0,
+    aiDecisionInterval: 12,
+    scriptedDecisionInterval: 5,
+  },
+  normal: {
+    label: 'Thường',
+    enemyHpMultiplier: 1.0,
+    enemyManaRegenMultiplier: 1.5,
+    aiDecisionInterval: 10,
+    scriptedDecisionInterval: 3,
+  },
+  hard: {
+    label: 'Khó',
+    enemyHpMultiplier: 1.25,
+    enemyManaRegenMultiplier: 2.0,
+    aiDecisionInterval: 7,
+    scriptedDecisionInterval: 2,
+  },
+  super_hard: {
+    label: 'Super Khó',
+    enemyHpMultiplier: 1.5,
+    enemyManaRegenMultiplier: 5.0,
+    aiDecisionInterval: 3,
+    scriptedDecisionInterval: 2,
+  },
+};
+
 
 // UNITS
 export const UNITS: { [id: string]: UnitData } = {
   // Age 1
   swordsman: {
     id: 'swordsman', name: 'Kiếm Sĩ', description: 'Đơn vị cận chiến cơ bản. Rẻ và hiệu quả với số lượng lớn.', icon: SwordIcon,
-    cost: 50, hp: 100, attack: 10, range: 2, speed: 2.5, attackSpeed: 1,
+    cost: 50, hp: 100, attack: 10, range: 2, speed: 2.5, attackSpeed: 1, role: 'melee',
   },
   shieldman: {
     id: 'shieldman', name: 'Thuẫn Binh', description: 'Đơn vị đỡ đòn với lượng máu cao. Dùng để bảo vệ các đơn vị tầm xa.', icon: ShieldIcon,
-    cost: 75, hp: 200, attack: 5, range: 2, speed: 2, attackSpeed: 0.8,
+    cost: 75, hp: 200, attack: 5, range: 2, speed: 2, attackSpeed: 0.8, role: 'tank',
   },
   archer: {
     id: 'archer', name: 'Cung Thủ', description: 'Tấn công từ xa, gây sát thương tốt nhưng máu giấy.', icon: CrosshairIcon,
-    cost: 100, hp: 60, attack: 12, range: 15, speed: 3, attackSpeed: 0.9, projectile: 'arrow',
+    cost: 100, hp: 60, attack: 12, range: 15, speed: 3, attackSpeed: 0.9, projectile: 'arrow', role: 'ranged',
   },
   // Age 2
   mage: {
     id: 'mage', name: 'Pháp Sư', description: 'Pháp sư mạnh mẽ tấn công diện rộng, hiệu quả chống lại nhóm lính.', icon: GhostIcon,
-    cost: 150, hp: 100, attack: 25, range: 12, speed: 2.5, attackSpeed: 0.5, projectile: 'fireball',
+    cost: 150, hp: 100, attack: 25, range: 12, speed: 2.5, attackSpeed: 0.5, projectile: 'fireball', role: 'ranged',
   },
   knight: {
     id: 'knight', name: 'Kỵ Sĩ', description: 'Kỵ sĩ trâu bò với tốc độ cao, nhanh chóng áp sát tiền tuyến địch.', icon: SwordIcon,
-    cost: 200, hp: 300, attack: 20, range: 3, speed: 4, attackSpeed: 1,
+    cost: 200, hp: 300, attack: 20, range: 3, speed: 4, attackSpeed: 1, role: 'elite',
   },
   // Age 3
   dragon: {
     id: 'dragon', name: 'Rồng Thần', description: 'Đơn vị tối thượng. Cực kỳ mạnh mẽ với sát thương và máu khủng khiếp.', icon: MoonIcon,
-    cost: 500, hp: 1000, attack: 50, range: 10, speed: 3, attackSpeed: 0.6, projectile: 'fireball',
+    cost: 500, hp: 1000, attack: 50, range: 10, speed: 3, attackSpeed: 0.6, projectile: 'fireball', role: 'elite',
   },
 };
 

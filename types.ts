@@ -12,6 +12,10 @@ export enum GameStatus {
   LOST,
 }
 
+export type Difficulty = 'easy' | 'normal' | 'hard' | 'super_hard';
+
+export type GameSpeed = 1 | 2 | 4;
+
 export interface UnitData {
   id: string;
   name: string;
@@ -24,6 +28,7 @@ export interface UnitData {
   speed: number; // in % of battlefield width per second
   attackSpeed: number; // attacks per second
   projectile?: 'arrow' | 'fireball';
+  role: 'tank' | 'melee' | 'ranged' | 'elite';
 }
 
 export interface UnitInstance {
@@ -33,6 +38,7 @@ export interface UnitInstance {
   hp: number;
   maxHp: number;
   position: number; // 0-100
+  yOffset: number; // in pixels
   attackCooldown: number;
   status: 'idle' | 'moving' | 'attacking' | 'dying';
   attackAnimationEnd?: number;
@@ -96,4 +102,13 @@ export interface VisualEffectInstance {
     position: { x: number; y: number };
     duration: number; // in ms
     createdAt: number;
+}
+
+export interface FloatingTextInstance {
+  id: string;
+  text: string;
+  color: string;
+  position: { x: number; y: number };
+  createdAt: number;
+  duration: number;
 }

@@ -17,6 +17,7 @@
 }
 </script>
 <style>
+  .text-shadow-lg { text-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
   @keyframes attack-melee {
     50% { transform: scale(1.2); }
   }
@@ -28,6 +29,20 @@
   }
   .animate-attack-ranged {
     animation: attack-ranged 0.3s ease-out;
+  }
+  @keyframes bobbing {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-4px); }
+  }
+  .animate-bobbing {
+    animation: bobbing 1.2s ease-in-out infinite;
+  }
+  @keyframes float-up {
+    0% { transform: translateY(0) scale(1.2); opacity: 1; }
+    100% { transform: translateY(-50px) scale(0.8); opacity: 0; }
+  }
+  .animate-float-up {
+    animation: float-up 1.5s ease-out forwards;
   }
 </style>
 </head>
