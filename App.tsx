@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 // Fix: Import GoogleGenAI instead of the deprecated GoogleGenerativeAI.
 import { GoogleGenAI } from "@google/genai";
@@ -10,9 +11,11 @@ import {
   VisualEffectInstance,
   Difficulty,
   FloatingTextInstance,
-  GameSpeed
+  GameSpeed,
+  PlayerProfile,
+  PlayerStats
 } from './types';
-import { AGES, UNITS, SPELLS, UPGRADES, TICK_RATE, BATTLEFIELD_WIDTH, INITIAL_PLAYER_STATE, FORMATION_CONFIG, DIFFICULTY_SETTINGS } from './constants';
+import { AGES, UNITS, SPELLS, UPGRADES, TICK_RATE, BATTLEFIELD_WIDTH, INITIAL_PLAYER_STATE, FORMATION_CONFIG, DIFFICULTY_SETTINGS, TITLES } from './constants';
 import Battlefield from './components/Battlefield';
 import ControlPanel from './components/ControlPanel';
 import StatusBar from './components/StatusBar';
@@ -62,6 +65,26 @@ const getInitialState = () => ({
   gameStatus: GameStatus.MENU,
   gameTime: 0,
 });
+
+const getInitialPlayerProfile = (): PlayerProfile => {
+    try {
+        const savedProfile = localStorage.getItem('playerProfile');
+        if (savedProfile) {
+            const parsed = JSON.parse(savedProfile);
+            if (parsed.stats && parsed.unlockedTitles) {
+                return parsed;
+            }
+        }
+    } catch (error) {
+        console.error("Failed to load player profile from localStorage", error);
+    }
+    // Default profile
+    return {
+        stats: { wins: 0, eliteKills: 0, gamesPlayed: 0 },
+        unlockedTitles: ['novice'],
+        equippedTitle: 'novice',
+    };
+};
 
 const StartMenu: React.FC<{ onStartGame: (mode: GameMode, difficulty: Difficulty) => void }> = ({ onStartGame }) => {
     const [selectedMode, setSelectedMode] = useState<GameMode>('ai');
@@ -172,9 +195,37 @@ const App: React.FC = () => {
     const [difficulty, setDifficulty] = useState<Difficulty>('normal');
     const [gameSpeed, setGameSpeed] = useState<GameSpeed>(1);
     const [confirmation, setConfirmation] = useState<{ type: 'evolve' | 'upgrade', id?: string } | null>(null);
+    const [playerProfile, setPlayerProfile] = useState<PlayerProfile>(getInitialPlayerProfile);
     
     const lastDecisionTime = useRef(0);
     const unitsToAddRef = useRef<UnitInstance[]>([]);
+
+    useEffect(() => {
+        if (gameStatus === GameStatus.WON || gameStatus === GameStatus.LOST) {
+            setPlayerProfile(currentProfile => {
+                const newStats: PlayerStats = {
+                    ...currentProfile.stats,
+                    gamesPlayed: currentProfile.stats.gamesPlayed + 1,
+                    wins: gameStatus === GameStatus.WON ? currentProfile.stats.wins + 1 : currentProfile.stats.wins,
+                    eliteKills: currentProfile.stats.eliteKills + player.eliteKills,
+                };
+                
+                const newlyUnlocked = Object.values(TITLES)
+                    .filter(title => !currentProfile.unlockedTitles.includes(title.id) && title.isUnlocked(newStats))
+                    .map(title => title.id);
+                
+                const newProfile = {
+                    ...currentProfile,
+                    stats: newStats,
+                    unlockedTitles: [...currentProfile.unlockedTitles, ...newlyUnlocked],
+                };
+
+                localStorage.setItem('playerProfile', JSON.stringify(newProfile));
+                return newProfile;
+            });
+        }
+    }, [gameStatus, player.eliteKills]);
+
 
     const makeAIDecision = useCallback(async () => {
         if (!ai || gameStatus !== GameStatus.PLAYING) return;
@@ -206,9 +257,12 @@ const App: React.FC = () => {
                 const unitData = Object.values(UNITS).find(u => u.id.toLowerCase() === param.toLowerCase());
                 if (unitData && enemy.mana >= unitData.cost) {
                     setEnemy(e => ({...e, mana: e.mana - unitData.cost}));
+                    const settings = DIFFICULTY_SETTINGS[difficulty];
+                    const hpMultiplier = settings.enemyUnitHpMultiplier || 1;
+                    const finalHp = unitData.hp * hpMultiplier;
                     const newUnit: UnitInstance = {
                         id: `${PlayerType.ENEMY}_${unitData.id}_${Date.now()}`, unitId: unitData.id, owner: PlayerType.ENEMY,
-                        hp: unitData.hp, maxHp: unitData.hp, position: 100,
+                        hp: finalHp, maxHp: finalHp, position: 100,
                         attackCooldown: 1 / unitData.attackSpeed, status: 'moving',
                         yOffset: 0,
                     };
@@ -221,7 +275,7 @@ const App: React.FC = () => {
                 }
             }
         } catch(e) { console.error("AI Error:", e); }
-    }, [enemy, player, units, gameStatus]);
+    }, [enemy, player, units, gameStatus, difficulty]);
 
     const makeScriptedDecision = useCallback(() => {
         // 1. Evolve if possible
@@ -236,12 +290,15 @@ const App: React.FC = () => {
         for (const unitData of availableUnits) {
             if (enemy.mana >= unitData.cost) {
                 setEnemy(e => ({ ...e, mana: e.mana - unitData.cost }));
+                const settings = DIFFICULTY_SETTINGS[difficulty];
+                const hpMultiplier = settings.enemyUnitHpMultiplier || 1;
+                const finalHp = unitData.hp * hpMultiplier;
                 const newUnit: UnitInstance = {
                     id: `${PlayerType.ENEMY}_${unitData.id}_${Date.now()}`,
                     unitId: unitData.id,
                     owner: PlayerType.ENEMY,
-                    hp: unitData.hp,
-                    maxHp: unitData.hp,
+                    hp: finalHp,
+                    maxHp: finalHp,
                     position: 100,
                     attackCooldown: 1 / unitData.attackSpeed,
                     status: 'moving',
@@ -252,7 +309,7 @@ const App: React.FC = () => {
             }
         }
         // 3. Wait if nothing else is possible
-    }, [enemy]);
+    }, [enemy, difficulty]);
 
 
     useEffect(() => {
@@ -260,7 +317,7 @@ const App: React.FC = () => {
         if (dyingUnits.length > 0) {
             const timer = setTimeout(() => {
                 setUnits(currentUnits => currentUnits.filter(u => u.status !== 'dying'));
-            }, 200);
+            }, 500); // Increased time for death animation
             return () => clearTimeout(timer);
         }
     }, [units]);
@@ -292,7 +349,21 @@ const App: React.FC = () => {
         let newUnits = [...units, ...unitsFromRef];
         let newProjectiles: ProjectileInstance[] = [];
         let newFloatingTexts: FloatingTextInstance[] = [];
-        let playerDamage = 0, enemyDamage = 0, expGained = 0;
+        let newEffects: VisualEffectInstance[] = [];
+        let playerDamage = 0, enemyDamage = 0, expGained = 0, eliteKillsThisTick = 0;
+
+        const createDeathEffect = (dyingUnit: UnitInstance) => {
+            const unitData = UNITS[dyingUnit.unitId];
+            const effectType = unitData.role === 'elite' ? 'elite_death' : 'death_puff';
+            const duration = unitData.role === 'elite' ? 800 : 500;
+            newEffects.push({
+                id: `eff_death_${dyingUnit.id}_${Date.now()}`,
+                type: effectType,
+                position: { x: dyingUnit.position, y: 10 },
+                duration: duration,
+                createdAt: Date.now()
+            });
+        };
 
         // --- START: FORMATION LOGIC ---
         const getFormationSpeed = (owner: PlayerType) => {
@@ -326,7 +397,11 @@ const App: React.FC = () => {
 
         newUnits.forEach(unit => {
             if (unit.status === 'dying') return;
-            if (unit.hp <= 0) { unit.status = 'dying'; return; }
+            if (unit.hp <= 0) {
+                 unit.status = 'dying'; 
+                 createDeathEffect(unit);
+                 return; 
+            }
             
             const isPlayer = unit.owner === PlayerType.PLAYER;
             const opponents = newUnits.filter(u => u.owner !== unit.owner && u.status !== 'dying');
@@ -343,7 +418,11 @@ const App: React.FC = () => {
                     unit.attackCooldown = 1 / unitData.attackSpeed;
                     unit.attackAnimationEnd = Date.now() + 300;
                     const upgrades = isPlayer ? player.upgrades : { unit_attack: 0 };
-                    const attack = unitData.attack * (1 + (upgrades.unit_attack || 0) * 0.1);
+                    let attack = unitData.attack * (1 + (upgrades.unit_attack || 0) * 0.1);
+
+                    if (!isPlayer) {
+                        attack *= (DIFFICULTY_SETTINGS[difficulty].enemyUnitAttackMultiplier || 1);
+                    }
 
                     if (unitData.projectile) {
                         newProjectiles.push({
@@ -361,10 +440,17 @@ const App: React.FC = () => {
                             createdAt: Date.now(),
                             duration: 1500,
                         });
-                        if (isPlayer && closestOpponent.hp <= 0 && closestOpponent.status !== 'dying') {
-                            expGained += Math.floor(UNITS[closestOpponent.unitId].cost / 4);
+                        if (closestOpponent.hp <= 0 && closestOpponent.status !== 'dying') {
+                            closestOpponent.status = 'dying';
+                            createDeathEffect(closestOpponent);
+                            if (isPlayer) {
+                                expGained += Math.floor(UNITS[closestOpponent.unitId].cost / 4);
+                                if (UNITS[closestOpponent.unitId].role === 'elite') {
+                                    eliteKillsThisTick++;
+                                }
+                            }
                         }
-                        setEffects(e => [...e, { id: `eff_${Date.now()}`, type: 'explosion', position: { x: closestOpponent.position, y: 10 }, duration: 300, createdAt: Date.now() }]);
+                        newEffects.push({ id: `eff_${Date.now()}`, type: 'hit_spark', position: { x: closestOpponent.position, y: 10 }, duration: 200, createdAt: Date.now() });
                     }
                 }
             } else {
@@ -382,7 +468,14 @@ const App: React.FC = () => {
                     if(unit.attackCooldown <= 0){
                         unit.attackCooldown = 1 / unitData.attackSpeed;
                         unit.attackAnimationEnd = Date.now() + 300;
-                        const damage = unitData.attack;
+                        
+                        const upgrades = isPlayer ? player.upgrades : { unit_attack: 0 };
+                        let damage = unitData.attack * (1 + (upgrades.unit_attack || 0) * 0.1);
+
+                        if (!isPlayer) {
+                            damage *= (DIFFICULTY_SETTINGS[difficulty].enemyUnitAttackMultiplier || 1);
+                        }
+
                         if (isPlayer) {
                             enemyDamage += damage;
                             newFloatingTexts.push({ id: `ft-base-${unit.id}-${Date.now()}`, text: `-${Math.round(damage)}`, color: 'text-red-400', position: { x: 5, y: 90 }, createdAt: Date.now(), duration: 1500 });
@@ -410,10 +503,17 @@ const App: React.FC = () => {
                     createdAt: Date.now(),
                     duration: 1500,
                 });
-                if (p.owner === PlayerType.PLAYER && target.hp <= 0 && target.status !== 'dying') {
-                    expGained += Math.floor(UNITS[target.unitId].cost / 4);
+                if (target.hp <= 0 && target.status !== 'dying') {
+                    target.status = 'dying';
+                    createDeathEffect(target);
+                    if (p.owner === PlayerType.PLAYER) {
+                        expGained += Math.floor(UNITS[target.unitId].cost / 4);
+                         if (UNITS[target.unitId].role === 'elite') {
+                            eliteKillsThisTick++;
+                        }
+                    }
                 }
-                setEffects(e => [...e, { id: `eff_${Date.now()}`, type: 'explosion', position: { x: target.position, y: 10 }, duration: 300, createdAt: Date.now() }]);
+                newEffects.push({ id: `eff_${Date.now()}`, type: 'hit_spark', position: { x: target.position, y: 10 }, duration: 200, createdAt: Date.now() });
                 return null;
             }
             p.position.x += (dx / dist) * p.speed * delta;
@@ -423,14 +523,15 @@ const App: React.FC = () => {
         
         setUnits(newUnits);
         setProjectiles([...updatedProjectiles, ...newProjectiles]);
-        setEffects(e => e.filter(eff => Date.now() - eff.createdAt < eff.duration));
+        setEffects(e => [...e.filter(eff => Date.now() - eff.createdAt < eff.duration), ...newEffects]);
         setFloatingTexts(current => [...current.filter(ft => Date.now() - ft.createdAt < ft.duration), ...newFloatingTexts]);
 
-        if (playerDamage > 0 || expGained > 0) {
+        if (playerDamage > 0 || expGained > 0 || eliteKillsThisTick > 0) {
             setPlayer(p => ({
                 ...p,
                 hp: Math.max(0, p.hp - playerDamage),
-                exp: Math.min(p.maxExp, p.exp + expGained)
+                exp: Math.min(p.maxExp, p.exp + expGained),
+                eliteKills: p.eliteKills + eliteKillsThisTick
             }));
         }
         if (enemyDamage > 0) setEnemy(e => ({...e, hp: Math.max(0, e.hp - enemyDamage)}));
@@ -515,7 +616,7 @@ const App: React.FC = () => {
                 createdAt: Date.now(),
                 duration: 1500,
             }]);
-            setEffects(e => [...e, { id: `eff_${Date.now()}`, type: 'explosion', position: { x: target.position, y: 10 }, duration: 500, createdAt: Date.now() }]);
+            setEffects(e => [...e, { id: `eff_${Date.now()}`, type: 'fireball_impact', position: { x: target.position, y: 10 }, duration: 500, createdAt: Date.now() }]);
         }
         
         setTargetingSpell(null);
@@ -581,6 +682,14 @@ const App: React.FC = () => {
         setConfirmation(null);
     };
 
+    const handleEquipTitle = (titleId: string | null) => {
+        setPlayerProfile(currentProfile => {
+            const newProfile = { ...currentProfile, equippedTitle: titleId };
+            localStorage.setItem('playerProfile', JSON.stringify(newProfile));
+            return newProfile;
+        });
+    };
+
     const handleRestart = () => {
         const s = getInitialState();
         setPlayer(s.player); setEnemy(s.enemy); setUnits(s.units); setProjectiles(s.projectiles);
@@ -625,7 +734,7 @@ const App: React.FC = () => {
     
     return (
         <div className="flex flex-col h-screen w-screen bg-black text-white font-sans">
-            <StatusBar player={player} enemy={enemy} />
+            <StatusBar player={player} enemy={enemy} playerProfile={playerProfile} />
             <GameSpeedControl currentGameSpeed={gameSpeed} onSpeedChange={setGameSpeed} />
             <Battlefield 
                 player={player} 
@@ -639,11 +748,13 @@ const App: React.FC = () => {
             />
             <ControlPanel
                 player={player}
+                playerProfile={playerProfile}
                 spellCooldowns={spellCooldowns}
                 onSummonUnit={handleSummonUnit}
                 onCastSpell={handleCastSpell}
                 onEvolve={handleEvolve}
                 onUpgrade={handleUpgrade}
+                onEquipTitle={handleEquipTitle}
                 targetingSpell={targetingSpell}
                 onCancelTargeting={handleCancelTargeting}
             />

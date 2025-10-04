@@ -1,4 +1,4 @@
-import { UnitData, SpellData, UpgradeData, AgeData, PlayerState, Difficulty } from './types';
+import { UnitData, SpellData, UpgradeData, AgeData, PlayerState, Difficulty, TitleData, PlayerStats } from './types';
 import { SwordIcon, ShieldIcon, CrosshairIcon, ZapIcon, SunIcon, BoltIcon, HomeModernIcon, HeartIcon, SparklesIcon, GhostIcon, MoonIcon } from './components/Icons';
 
 export const TICK_RATE = 1000 / 60; // 60 FPS
@@ -16,6 +16,8 @@ export const DIFFICULTY_SETTINGS: {
     label: string;
     enemyHpMultiplier: number;
     enemyManaRegenMultiplier: number;
+    enemyUnitHpMultiplier: number;
+    enemyUnitAttackMultiplier: number;
     aiDecisionInterval: number; // in seconds
     scriptedDecisionInterval: number; // in seconds
   }
@@ -24,6 +26,8 @@ export const DIFFICULTY_SETTINGS: {
     label: 'Dễ',
     enemyHpMultiplier: 0.8,
     enemyManaRegenMultiplier: 1.0,
+    enemyUnitHpMultiplier: 0.9,
+    enemyUnitAttackMultiplier: 0.9,
     aiDecisionInterval: 12,
     scriptedDecisionInterval: 5,
   },
@@ -31,6 +35,8 @@ export const DIFFICULTY_SETTINGS: {
     label: 'Thường',
     enemyHpMultiplier: 1.0,
     enemyManaRegenMultiplier: 1.5,
+    enemyUnitHpMultiplier: 1.0,
+    enemyUnitAttackMultiplier: 1.0,
     aiDecisionInterval: 10,
     scriptedDecisionInterval: 3,
   },
@@ -38,13 +44,17 @@ export const DIFFICULTY_SETTINGS: {
     label: 'Khó',
     enemyHpMultiplier: 1.25,
     enemyManaRegenMultiplier: 2.0,
+    enemyUnitHpMultiplier: 1.15,
+    enemyUnitAttackMultiplier: 1.1,
     aiDecisionInterval: 7,
     scriptedDecisionInterval: 2,
   },
   super_hard: {
     label: 'Super Khó',
     enemyHpMultiplier: 1.5,
-    enemyManaRegenMultiplier: 5.0,
+    enemyManaRegenMultiplier: 11.0,
+    enemyUnitHpMultiplier: 0.3,
+    enemyUnitAttackMultiplier: 1.25,
     aiDecisionInterval: 3,
     scriptedDecisionInterval: 2,
   },
@@ -146,6 +156,39 @@ export const AGES: AgeData[] = [
   }
 ];
 
+export const TITLES: { [id: string]: TitleData } = {
+  novice: {
+    id: 'novice',
+    name: 'Tân Binh Tu Tiên',
+    description: 'Bắt đầu cuộc hành trình của bạn.',
+    isUnlocked: (stats: PlayerStats) => true,
+  },
+  tactician: {
+    id: 'tactician',
+    name: 'Chiến Thuật Sư',
+    description: 'Thắng 5 trận.',
+    isUnlocked: (stats: PlayerStats) => stats.wins >= 5,
+  },
+  immortal_slayer: {
+    id: 'immortal_slayer',
+    name: 'Tiên Nhân Đồ Sát',
+    description: 'Đánh bại 10 đơn vị tinh anh.',
+    isUnlocked: (stats: PlayerStats) => stats.eliteKills >= 10,
+  },
+  veteran: {
+    id: 'veteran',
+    name: 'Lão Binh Trăm Trận',
+    description: 'Chơi 25 trận.',
+    isUnlocked: (stats: PlayerStats) => stats.gamesPlayed >= 25,
+  },
+  grandmaster: {
+    id: 'grandmaster',
+    name: 'Đại Tông Sư',
+    description: 'Thắng 20 trận.',
+    isUnlocked: (stats: PlayerStats) => stats.wins >= 20,
+  },
+};
+
 export const INITIAL_PLAYER_STATE: Omit<PlayerState, 'upgrades'> & { upgrades: { [key: string]: number} } = {
     hp: 1000,
     maxHp: 1000,
@@ -155,6 +198,7 @@ export const INITIAL_PLAYER_STATE: Omit<PlayerState, 'upgrades'> & { upgrades: {
     age: 0,
     exp: 0,
     maxExp: AGES[0].evolveExp,
+    eliteKills: 0,
     upgrades: {
         base_hp: 0,
         mana_regen: 0,

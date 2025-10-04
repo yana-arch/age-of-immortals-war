@@ -72,6 +72,26 @@ export interface AgeData {
     evolveExp: number;
 }
 
+export interface PlayerStats {
+    wins: number;
+    eliteKills: number;
+    gamesPlayed: number;
+}
+
+export interface TitleData {
+  id: string;
+  name: string;
+  description: string;
+  isUnlocked: (stats: PlayerStats) => boolean;
+}
+
+export interface PlayerProfile {
+    stats: PlayerStats;
+    unlockedTitles: string[];
+    equippedTitle: string | null;
+}
+
+
 export interface PlayerState {
   hp: number;
   maxHp: number;
@@ -82,6 +102,7 @@ export interface PlayerState {
   exp: number;
   maxExp: number;
   upgrades: { [upgradeId: string]: number };
+  eliteKills: number;
 }
 
 export interface ProjectileInstance {
@@ -98,7 +119,7 @@ export interface ProjectileInstance {
 
 export interface VisualEffectInstance {
     id: string;
-    type: 'explosion' | 'heal';
+    type: 'hit_spark' | 'heal' | 'fireball_impact' | 'death_puff' | 'elite_death';
     position: { x: number; y: number };
     duration: number; // in ms
     createdAt: number;

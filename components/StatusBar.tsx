@@ -1,12 +1,13 @@
 
 import React from 'react';
-import { PlayerState } from '../types';
-import { AGES } from '../constants';
+import { PlayerState, PlayerProfile } from '../types';
+import { AGES, TITLES } from '../constants';
 import { UserIcon, CpuChipIcon, HeartIcon, SparklesIcon, StarIcon } from './Icons';
 
 interface StatusBarProps {
   player: PlayerState;
   enemy: PlayerState;
+  playerProfile: PlayerProfile;
 }
 
 const StatBar: React.FC<{ value: number; maxValue: number; colorClass: string }> = ({ value, maxValue, colorClass }) => {
@@ -19,14 +20,23 @@ const StatBar: React.FC<{ value: number; maxValue: number; colorClass: string }>
 };
 
 
-const StatusBar: React.FC<StatusBarProps> = ({ player, enemy }) => {
+const StatusBar: React.FC<StatusBarProps> = ({ player, enemy, playerProfile }) => {
+  const equippedTitleData = playerProfile.equippedTitle ? TITLES[playerProfile.equippedTitle] : null;
+
   return (
     <div className="w-full h-28 bg-black/30 p-4 flex justify-between items-center text-white border-b-2 border-cyan-500/30">
         {/* Player Stats */}
         <div className="w-1/3 flex items-center gap-4">
             <UserIcon className="w-10 h-10 text-cyan-400"/>
             <div className="flex-grow">
-                <div className="font-bold text-lg">{AGES[player.age].name}</div>
+                <div className="flex items-baseline">
+                    <div className="font-bold text-lg">{AGES[player.age].name}</div>
+                    {equippedTitleData && (
+                        <div className="ml-3 text-sm font-semibold text-yellow-300 tracking-wider">
+                           « {equippedTitleData.name} »
+                        </div>
+                    )}
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                     <HeartIcon className="w-5 h-5 text-green-400"/>
                     <StatBar value={player.hp} maxValue={player.maxHp} colorClass="bg-green-500" />

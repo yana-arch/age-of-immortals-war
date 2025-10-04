@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
-import { PlayerState } from '../types';
-import { AGES, UNITS, SPELLS, UPGRADES } from '../constants';
-import { StarIcon, ArrowUpTrayIcon, SparklesIcon } from './Icons';
+import { PlayerState, PlayerProfile } from '../types';
+import { AGES, UNITS, SPELLS, UPGRADES, TITLES } from '../constants';
+import { StarIcon, ArrowUpTrayIcon, SparklesIcon, BookmarkSquareIcon } from './Icons';
 
 interface ControlPanelProps {
   player: PlayerState;
+  playerProfile: PlayerProfile;
   spellCooldowns: { [spellId: string]: number };
   onSummonUnit: (unitId: string) => void;
   onCastSpell: (spellId: string) => void;
   onEvolve: () => void;
   onUpgrade: (upgradeId: string) => void;
+  onEquipTitle: (titleId: string | null) => void;
   targetingSpell: string | null;
   onCancelTargeting: () => void;
 }
@@ -69,7 +71,7 @@ const Tooltip: React.FC<{title: string, cost?: number, description: string, stat
 );
 
 
-const ControlPanel: React.FC<ControlPanelProps> = ({ player, spellCooldowns, onSummonUnit, onCastSpell, onEvolve, onUpgrade, targetingSpell, onCancelTargeting }) => {
+const ControlPanel: React.FC<ControlPanelProps> = ({ player, playerProfile, spellCooldowns, onSummonUnit, onCastSpell, onEvolve, onUpgrade, onEquipTitle, targetingSpell, onCancelTargeting }) => {
   const [activeTab, setActiveTab] = useState('combat');
   const currentAge = AGES[player.age];
   const nextAge = AGES[player.age + 1];
@@ -94,6 +96,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ player, spellCooldowns, onS
         </TabButton>
         <TabButton tabId="upgrades">
             <div className="flex items-center gap-2"><ArrowUpTrayIcon className="w-5 h-5"/>Nâng Cấp</div>
+        </TabButton>
+        <TabButton tabId="titles">
+            <div className="flex items-center gap-2"><BookmarkSquareIcon className="w-5 h-5"/>Danh Hiệu</div>
         </TabButton>
       </div>
       <div className="relative h-48 flex-grow p-2 flex items-center justify-center gap-2 bg-gray-700/30">
@@ -225,6 +230,36 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ player, spellCooldowns, onS
                     </ControlButton>
                 </div>
               );
+            })}
+          </div>
+        )}
+        {activeTab === 'titles' && (
+          <div className="grid grid-cols-5 gap-3">
+             {Object.values(TITLES).map(title => {
+                const isUnlocked = playerProfile.unlockedTitles.includes(title.id);
+                const isEquipped = playerProfile.equippedTitle === title.id;
+                
+                const baseStyle = "flex flex-col items-center justify-center w-32 h-20 p-2 rounded-lg shadow-lg border-2 transition-all duration-200 transform hover:scale-105 text-center";
+                let stateStyle = "bg-gray-700/50 border-gray-600 text-gray-400 cursor-not-allowed";
+                if(isUnlocked) {
+                    stateStyle = "bg-gradient-to-br from-purple-600 to-indigo-800 border-purple-400 text-white hover:from-purple-500 hover:to-indigo-700 cursor-pointer";
+                }
+                if(isEquipped) {
+                    stateStyle += " ring-4 ring-yellow-300 ring-offset-2 ring-offset-gray-700/30";
+                }
+
+                return (
+                    <div key={title.id} className="relative group">
+                        <Tooltip title={title.name} description={title.description}/>
+                        <button 
+                            onClick={() => isUnlocked && onEquipTitle(isEquipped ? null : title.id)}
+                            disabled={!isUnlocked}
+                            className={`${baseStyle} ${stateStyle}`}
+                        >
+                            <span className="font-bold text-sm">{title.name}</span>
+                        </button>
+                    </div>
+                );
             })}
           </div>
         )}
