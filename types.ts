@@ -23,7 +23,6 @@ export interface UnitData {
   range: number; // in % of battlefield width
   speed: number; // in % of battlefield width per second
   attackSpeed: number; // attacks per second
-  visionRange: number; // in % of battlefield width
   projectile?: 'arrow' | 'fireball';
 }
 

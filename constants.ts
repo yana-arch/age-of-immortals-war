@@ -3,36 +3,35 @@ import { SwordIcon, ShieldIcon, CrosshairIcon, ZapIcon, SunIcon, BoltIcon, HomeM
 
 export const TICK_RATE = 1000 / 60; // 60 FPS
 export const BATTLEFIELD_WIDTH = 100; // Use percentage
-export const BASE_VISION_RANGE = 20; // in % of battlefield width
 
 // UNITS
 export const UNITS: { [id: string]: UnitData } = {
   // Age 1
   swordsman: {
     id: 'swordsman', name: 'Kiếm Sĩ', description: 'Đơn vị cận chiến cơ bản. Rẻ và hiệu quả với số lượng lớn.', icon: SwordIcon,
-    cost: 50, hp: 100, attack: 10, range: 2, speed: 2.5, attackSpeed: 1, visionRange: 10,
+    cost: 50, hp: 100, attack: 10, range: 2, speed: 2.5, attackSpeed: 1,
   },
   shieldman: {
     id: 'shieldman', name: 'Thuẫn Binh', description: 'Đơn vị đỡ đòn với lượng máu cao. Dùng để bảo vệ các đơn vị tầm xa.', icon: ShieldIcon,
-    cost: 75, hp: 200, attack: 5, range: 2, speed: 2, attackSpeed: 0.8, visionRange: 8,
+    cost: 75, hp: 200, attack: 5, range: 2, speed: 2, attackSpeed: 0.8,
   },
   archer: {
     id: 'archer', name: 'Cung Thủ', description: 'Tấn công từ xa, gây sát thương tốt nhưng máu giấy.', icon: CrosshairIcon,
-    cost: 100, hp: 60, attack: 12, range: 15, speed: 3, attackSpeed: 0.9, projectile: 'arrow', visionRange: 18,
+    cost: 100, hp: 60, attack: 12, range: 15, speed: 3, attackSpeed: 0.9, projectile: 'arrow',
   },
   // Age 2
   mage: {
     id: 'mage', name: 'Pháp Sư', description: 'Pháp sư mạnh mẽ tấn công diện rộng, hiệu quả chống lại nhóm lính.', icon: GhostIcon,
-    cost: 150, hp: 100, attack: 25, range: 12, speed: 2.5, attackSpeed: 0.5, projectile: 'fireball', visionRange: 15,
+    cost: 150, hp: 100, attack: 25, range: 12, speed: 2.5, attackSpeed: 0.5, projectile: 'fireball',
   },
   knight: {
     id: 'knight', name: 'Kỵ Sĩ', description: 'Kỵ sĩ trâu bò với tốc độ cao, nhanh chóng áp sát tiền tuyến địch.', icon: SwordIcon,
-    cost: 200, hp: 300, attack: 20, range: 3, speed: 4, attackSpeed: 1, visionRange: 12,
+    cost: 200, hp: 300, attack: 20, range: 3, speed: 4, attackSpeed: 1,
   },
   // Age 3
   dragon: {
     id: 'dragon', name: 'Rồng Thần', description: 'Đơn vị tối thượng. Cực kỳ mạnh mẽ với sát thương và máu khủng khiếp.', icon: MoonIcon,
-    cost: 500, hp: 1000, attack: 50, range: 10, speed: 3, attackSpeed: 0.6, projectile: 'fireball', visionRange: 20,
+    cost: 500, hp: 1000, attack: 50, range: 10, speed: 3, attackSpeed: 0.6, projectile: 'fireball',
   },
 };
 
