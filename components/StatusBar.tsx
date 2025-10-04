@@ -2,7 +2,7 @@
 import React from 'react';
 import { PlayerState } from '../types';
 import { AGES } from '../constants';
-import { UserIcon, CpuChipIcon, HeartIcon, SparklesIcon } from './Icons';
+import { UserIcon, CpuChipIcon, HeartIcon, SparklesIcon, StarIcon } from './Icons';
 
 interface StatusBarProps {
   player: PlayerState;
@@ -10,7 +10,7 @@ interface StatusBarProps {
 }
 
 const StatBar: React.FC<{ value: number; maxValue: number; colorClass: string }> = ({ value, maxValue, colorClass }) => {
-    const percentage = (value / maxValue) * 100;
+    const percentage = maxValue > 0 ? (value / maxValue) * 100 : 0;
     return (
         <div className="w-full h-4 bg-black/50 rounded-full overflow-hidden border border-white/20">
             <div className={`h-full ${colorClass} transition-all duration-300`} style={{width: `${percentage}%`}}></div>
@@ -21,7 +21,7 @@ const StatBar: React.FC<{ value: number; maxValue: number; colorClass: string }>
 
 const StatusBar: React.FC<StatusBarProps> = ({ player, enemy }) => {
   return (
-    <div className="w-full h-24 bg-black/30 p-4 flex justify-between items-center text-white border-b-2 border-cyan-500/30">
+    <div className="w-full h-28 bg-black/30 p-4 flex justify-between items-center text-white border-b-2 border-cyan-500/30">
         {/* Player Stats */}
         <div className="w-1/3 flex items-center gap-4">
             <UserIcon className="w-10 h-10 text-cyan-400"/>
@@ -34,6 +34,10 @@ const StatusBar: React.FC<StatusBarProps> = ({ player, enemy }) => {
                  <div className="flex items-center gap-2 mt-1">
                     <SparklesIcon className="w-5 h-5 text-yellow-400"/>
                     <StatBar value={player.mana} maxValue={player.maxMana} colorClass="bg-yellow-500" />
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                    <StarIcon className="w-5 h-5 text-purple-400"/>
+                    <StatBar value={player.exp} maxValue={player.maxExp} colorClass="bg-purple-500" />
                 </div>
             </div>
         </div>

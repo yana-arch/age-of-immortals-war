@@ -16,6 +16,7 @@ import StatusBar from './components/StatusBar';
 import GameModal from './components/GameModal';
 import { CpuChipIcon, SparklesIcon } from './components/Icons';
 import Background from './components/Background';
+import ConfirmationModal from './components/ConfirmationModal';
 
 const useGameLoop = (callback: () => void, interval: number) => {
   const callbackRef = useRef(callback);
@@ -107,6 +108,7 @@ const App: React.FC = () => {
     const [gameTime, setGameTime] = useState<number>(getInitialState().gameTime);
     const [targetingSpell, setTargetingSpell] = useState<string | null>(null);
     const [gameMode, setGameMode] = useState<GameMode | null>(null);
+    const [confirmation, setConfirmation] = useState<{ type: 'evolve' | 'upgrade', id?: string } | null>(null);
     
     const lastDecisionTime = useRef(0);
     const unitsToAddRef = useRef<UnitInstance[]>([]);
@@ -220,7 +222,7 @@ const App: React.FC = () => {
 
         let newUnits = [...units, ...unitsFromRef];
         let newProjectiles: ProjectileInstance[] = [];
-        let playerDamage = 0, enemyDamage = 0;
+        let playerDamage = 0, enemyDamage = 0, expGained = 0;
 
         newUnits.forEach(unit => {
             if (unit.status === 'dying') return;
@@ -251,6 +253,9 @@ const App: React.FC = () => {
                         });
                     } else {
                         closestOpponent.hp -= attack;
+                        if (isPlayer && closestOpponent.hp <= 0 && closestOpponent.status !== 'dying') {
+                            expGained += Math.floor(UNITS[closestOpponent.unitId].cost / 4);
+                        }
                         setEffects(e => [...e, { id: `eff_${Date.now()}`, type: 'explosion', position: { x: closestOpponent.position, y: 10 }, duration: 300, createdAt: Date.now() }]);
                     }
                 }
@@ -279,6 +284,9 @@ const App: React.FC = () => {
             const dist = Math.sqrt(dx*dx + dy*dy);
             if (dist < 1) {
                 target.hp -= p.damage;
+                if (p.owner === PlayerType.PLAYER && target.hp <= 0 && target.status !== 'dying') {
+                    expGained += Math.floor(UNITS[target.unitId].cost / 4);
+                }
                 setEffects(e => [...e, { id: `eff_${Date.now()}`, type: 'explosion', position: { x: target.position, y: 10 }, duration: 300, createdAt: Date.now() }]);
                 return null;
             }
@@ -291,7 +299,13 @@ const App: React.FC = () => {
         setProjectiles([...updatedProjectiles, ...newProjectiles]);
         setEffects(e => e.filter(eff => Date.now() - eff.createdAt < eff.duration));
 
-        if (playerDamage > 0) setPlayer(p => ({...p, hp: Math.max(0, p.hp - playerDamage)}));
+        if (playerDamage > 0 || expGained > 0) {
+            setPlayer(p => ({
+                ...p,
+                hp: Math.max(0, p.hp - playerDamage),
+                exp: Math.min(p.maxExp, p.exp + expGained)
+            }));
+        }
         if (enemyDamage > 0) setEnemy(e => ({...e, hp: Math.max(0, e.hp - enemyDamage)}));
         
         setSpellCooldowns(s => Object.keys(s).reduce((acc, key) => ({...acc, [key]: Math.max(0, s[key] - delta)}), {} as {[key: string]: number}));
@@ -358,14 +372,26 @@ const App: React.FC = () => {
     };
 
 
-    const handleEvolve = () => {
-        const cost = AGES[player.age].evolveCost;
-        if (player.mana >= cost && AGES[player.age + 1]) {
-            setPlayer(p => ({...p, mana: p.mana - cost, age: p.age + 1}));
+    const executeEvolve = () => {
+        const currentAgeData = AGES[player.age];
+        const nextAgeData = AGES[player.age + 1];
+        if (!nextAgeData) return;
+
+        const cost = currentAgeData.evolveCost;
+        const requiredExp = currentAgeData.evolveExp;
+
+        if (player.mana >= cost && player.exp >= requiredExp) {
+            setPlayer(p => ({
+                ...p,
+                mana: p.mana - cost,
+                age: p.age + 1,
+                exp: 0,
+                maxExp: nextAgeData.evolveExp,
+            }));
         }
     };
     
-    const handleUpgrade = (upgradeId: string) => {
+    const executeUpgrade = (upgradeId: string) => {
         const upgrade = UPGRADES[upgradeId];
         const level = player.upgrades[upgradeId] || 0;
         if (level >= upgrade.maxLevel) return;
@@ -377,6 +403,28 @@ const App: React.FC = () => {
             if (upgradeId === 'mana_regen') newPlayer = {...newPlayer, manaRegen: newPlayer.manaRegen + 0.5};
             return newPlayer;
         });
+    };
+
+    const handleEvolve = () => {
+        setConfirmation({ type: 'evolve' });
+    };
+
+    const handleUpgrade = (upgradeId: string) => {
+        setConfirmation({ type: 'upgrade', id: upgradeId });
+    };
+
+    const handleConfirm = () => {
+        if (!confirmation) return;
+        if (confirmation.type === 'evolve') {
+            executeEvolve();
+        } else if (confirmation.type === 'upgrade' && confirmation.id) {
+            executeUpgrade(confirmation.id);
+        }
+        setConfirmation(null);
+    };
+
+    const handleCancelConfirmation = () => {
+        setConfirmation(null);
     };
 
     const handleRestart = () => {
@@ -423,6 +471,12 @@ const App: React.FC = () => {
                 onCancelTargeting={handleCancelTargeting}
             />
             <GameModal status={gameStatus} onRestart={handleRestart} />
+            <ConfirmationModal
+                confirmation={confirmation}
+                player={player}
+                onConfirm={handleConfirm}
+                onCancel={handleCancelConfirmation}
+            />
         </div>
     );
 };

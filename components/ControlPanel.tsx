@@ -154,6 +154,8 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ player, spellCooldowns, onS
             {nextAge && (() => {
                 const newUnits = nextAge.units.filter(u => !currentAge.units.includes(u));
                 const newSpells = nextAge.spells.filter(s => !currentAge.spells.includes(s));
+                const requiredExp = currentAge.evolveExp;
+                const canEvolve = player.mana >= currentAge.evolveCost && player.exp >= requiredExp;
                 return (
                   <div className="relative group">
                     <Tooltip 
@@ -161,6 +163,9 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ player, spellCooldowns, onS
                       cost={currentAge.evolveCost} 
                       description={nextAge.description}
                     >
+                      <div className="mt-2 text-left text-xs space-y-1 text-gray-200">
+                        <span>Kinh nghiệm: <span className={`font-semibold ${player.exp >= requiredExp ? 'text-green-300' : 'text-white'}`}>{player.exp} / {requiredExp}</span></span>
+                      </div>
                       {(newUnits.length > 0 || newSpells.length > 0) && (
                         <div className="mt-2 pt-2 border-t border-cyan-500/20">
                           <h4 className="font-bold text-sm text-white">Mở Khóa Mới:</h4>
@@ -171,7 +176,7 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ player, spellCooldowns, onS
                         </div>
                       )}
                     </Tooltip>
-                    <ControlButton onClick={onEvolve} disabled={player.mana < currentAge.evolveCost} cost={currentAge.evolveCost} isEvolve={true}>
+                    <ControlButton onClick={onEvolve} disabled={!canEvolve} cost={currentAge.evolveCost} isEvolve={true} className={canEvolve ? 'animate-pulse' : ''}>
                         <StarIcon className="w-8 h-8 mb-1"/>
                         <span className="text-xs text-center font-bold">Tiến Hóa</span>
                     </ControlButton>
@@ -187,25 +192,36 @@ const ControlPanel: React.FC<ControlPanelProps> = ({ player, spellCooldowns, onS
               const currentLevel = player.upgrades[upgrade.id] || 0;
               const isMaxLevel = currentLevel >= upgrade.maxLevel;
               const cost = isMaxLevel ? undefined : upgrade.cost(currentLevel);
+              const canAfford = !isMaxLevel && cost !== undefined && player.mana >= cost;
               const isDisabled = isMaxLevel || (cost !== undefined && player.mana < cost);
+              const highlightClass = canAfford ? 'ring-2 ring-offset-2 ring-offset-gray-700/30 ring-green-400 animate-pulse' : '';
 
               return (
                 <div key={upgrade.id} className="relative group">
                     <Tooltip 
                         title={upgrade.name} 
                         cost={cost} 
-                        description={upgrade.description(currentLevel)}
+                        description={upgrade.description(0).split(' Hiện tại:')[0]}
                     >
-                        <div className="mt-2 text-xs text-cyan-300">
+                        <div className="mt-2 text-left text-xs space-y-1 text-gray-200">
+                            <span>Hiện tại: <span className="font-semibold text-white">{upgrade.description(currentLevel).split('Hiện tại: ')[1]}</span></span>
+                            {!isMaxLevel && (
+                                <span>Tiếp theo: <span className="font-semibold text-green-300">{upgrade.description(currentLevel + 1).split('Hiện tại: ')[1]}</span></span>
+                            )}
+                        </div>
+
+                        <div className="mt-2 text-xs text-cyan-300 font-bold">
                             {isMaxLevel ? 'Cấp Tối Đa' : `Cấp ${currentLevel} / ${upgrade.maxLevel}`}
                         </div>
                     </Tooltip>
-                    <ControlButton onClick={() => onUpgrade(upgrade.id)} disabled={isDisabled} cost={cost} isUpgrade={true}>
+                    <ControlButton onClick={() => onUpgrade(upgrade.id)} disabled={isDisabled} cost={cost} isUpgrade={true} className={highlightClass}>
                         <upgrade.icon className="w-8 h-8 mb-1" />
                         <span className="text-xs text-center">{upgrade.name}</span>
-                        <span className="text-[10px] text-cyan-300 mt-1">
-                            {isMaxLevel ? 'Tối đa' : `Cấp ${currentLevel}`}
-                        </span>
+                        <div className="flex justify-center items-center gap-1 mt-1.5">
+                          {[...Array(upgrade.maxLevel)].map((_, i) => (
+                            <div key={i} className={`w-2 h-2 rounded-sm ${i < currentLevel ? 'bg-cyan-300' : 'bg-gray-600'}`}></div>
+                          ))}
+                        </div>
                     </ControlButton>
                 </div>
               );

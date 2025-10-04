@@ -23,6 +23,7 @@ export interface UnitData {
   range: number; // in % of battlefield width
   speed: number; // in % of battlefield width per second
   attackSpeed: number; // attacks per second
+  visionRange: number; // in % of battlefield width
   projectile?: 'arrow' | 'fireball';
 }
 
@@ -63,6 +64,7 @@ export interface AgeData {
     units: string[];
     spells: string[];
     evolveCost: number;
+    evolveExp: number;
 }
 
 export interface PlayerState {
@@ -72,6 +74,8 @@ export interface PlayerState {
   maxMana: number;
   manaRegen: number;
   age: number;
+  exp: number;
+  maxExp: number;
   upgrades: { [upgradeId: string]: number };
 }
 
